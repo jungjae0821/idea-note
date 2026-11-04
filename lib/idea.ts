@@ -1,4 +1,4 @@
-export const MODEL = "gemini-2.5-flash-lite";
+export const MODEL = "gemini-3.5-flash-lite";
 export const CATEGORY = "project";
 export type IdeaInput = {
   topic: string;
@@ -107,6 +107,10 @@ export async function generateIdea(
     );
   }
   if (!response.ok) {
+    console.error(
+      `Gemini ${response.status}:`,
+      (await response.text().catch(() => "")).slice(0, 500),
+    );
     if (response.status === 429)
       throw new IdeaError(
         "RATE_LIMITED",
