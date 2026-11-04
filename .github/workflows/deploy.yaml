@@ -19,15 +19,6 @@ jobs:
       - name: Check out the code
         uses: actions/checkout@v4
 
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          java-version: 17
-          distribution: temurin
-
-      - name: Grant execute permission for Gradlew
-        run: chmod +x ./gradlew
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -35,10 +26,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Build and Push Image with Jib
+      - name: Log in to Amazon ECR
+        run: |
+          aws ecr get-login-password --region $AWS_REGION \
+            | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+      - name: Build and Push Image
         env:
-          REGISTRY_USER: AWS
           CONTAINER_IMAGE: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
         run: |
-          export REGISTRY_PASSWORD=$(aws ecr get-login-password --region $AWS_REGION)
-          ./gradlew jib -PprojectDataImageTargetEnv=prod
+          docker build -t $CONTAINER_IMAGE .
+          docker push $CONTAINER_IMAGE

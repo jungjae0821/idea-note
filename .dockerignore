@@ -1,0 +1,11 @@
+node_modules
+.next
+.vinext
+.wrangler
+.sites-runtime
+dist
+.git
+.github
+.claude
+.env*
+*.tsbuildinfo
