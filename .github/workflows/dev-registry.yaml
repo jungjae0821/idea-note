@@ -80,13 +80,28 @@ jobs:
           [[ "$DEPLOY_URL" == "https://daelim.minq.live/_cd/$REGISTRY_NAMESPACE" ]]
           test -n "$DEPLOY_TOKEN"
           jq -n --arg image "$CONTAINER_IMAGE" --arg revision "$GITHUB_SHA" '{image:$image,revision:$revision}' > request.json
-          curl --silent --show-error --fail-with-body --max-time 1800 \
+          echo "Deploy request: $(cat request.json)"
+          started=$(date +%s)
+          code=$(curl --silent --show-error --max-time 1800 \
+            --output deployment-result.json --write-out '%{http_code}' \
             --header "Authorization: Bearer $DEPLOY_TOKEN" \
             --header 'Content-Type: application/json' \
-            --data-binary @request.json "$DEPLOY_URL" > deployment-result.json
+            --data-binary @request.json "$DEPLOY_URL") || true
+          echo "Deploy response: HTTP ${code:-none} after $(( $(date +%s) - started ))s"
+          echo "Deploy response body:"
+          cat deployment-result.json 2>/dev/null || echo "(no body)"
+          echo
+          [[ "$code" == 2* ]]
           jq -e '.status == "deployed" or .status == "unchanged"' deployment-result.json
           prefix="$REGISTRY_NAMESPACE"
           if [[ "$prefix" == team ]]; then prefix=example; fi
-          curl --silent --show-error --fail --retry 10 --retry-delay 6 --retry-all-errors "https://daelim.minq.live/$prefix/common/health" | jq -e '.status == "ok" and .database == "up"'
+          health_url="https://daelim.minq.live/$prefix/common/health"
+          if ! curl --silent --show-error --fail --retry 10 --retry-delay 6 --retry-all-errors "$health_url" > health.json; then
+            echo "Health check failed: $health_url"
+            curl --silent --show-error --include "$health_url" || true
+            exit 1
+          fi
+          echo "Health response: $(cat health.json)"
+          jq -e '.status == "ok" and .database == "up"' health.json
           printf '\n### Lightsail deployment\n\nHealth: https://daelim.minq.live/%s/common/health\n\n' "$prefix" >> "$GITHUB_STEP_SUMMARY"
           jq -r '"Result: " + .status + "\n\nDigest: `" + .image + "`"' deployment-result.json >> "$GITHUB_STEP_SUMMARY"
