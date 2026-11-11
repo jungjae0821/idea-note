@@ -145,3 +145,60 @@ test("저장소 사용 불가 시 결과 원본은 유지된다", async () => {
     globalThis.indexedDB = factory;
   }
 });
+
+import {
+  parseClientId,
+  parseIdeaId,
+  validateRecord,
+  validatePatch,
+  parseListQuery,
+  encodeCursor,
+} from "../lib/ideas-api.ts";
+
+const uuid = "3f1c2b7e-8a4d-4e2f-9b1a-2c3d4e5f6a7b";
+const record = {
+  ...input,
+  id: uuid,
+  title: "틈새 캠퍼스",
+  body: "본문",
+  modelId: MODEL,
+  createdAt: "2026-11-11T01:02:03.000Z",
+  savedAt: null,
+};
+test("ideas API: 브라우저 ID와 아이디어 ID는 UUID만 받는다", () => {
+  assert.equal(parseClientId(uuid.toUpperCase()), uuid);
+  for (const v of [null, "", "abc", "1; DROP TABLE ideas"])
+    assert.throws(() => parseClientId(v), { code: "INVALID_CLIENT", status: 401 });
+  assert.throws(() => parseIdeaId("../x"), { code: "NOT_FOUND", status: 404 });
+});
+test("ideas API: 기록 검증은 생성 결과 형식을 받고 잘못된 값은 거절한다", () => {
+  const ok = validateRecord({ ...record, title: " 제목 ", extra: 1 });
+  assert.equal(ok.title, "제목");
+  assert.equal("extra" in ok, false);
+  assert.equal(validateRecord({ ...record, savedAt: "2026-11-11T02:00:00Z" }).savedAt, "2026-11-11T02:00:00.000Z");
+  for (const bad of [
+    { ...record, id: "1" },
+    { ...record, title: "" },
+    { ...record, body: "a".repeat(10001) },
+    { ...record, createdAt: "어제" },
+    { ...record, savedAt: true },
+    { ...record, topic: "" },
+  ])
+    assert.throws(() => validateRecord(bad), { code: "INVALID_INPUT" });
+});
+test("ideas API: 수정은 title·body·saved만 허용한다", () => {
+  assert.deepEqual(validatePatch({ saved: true, title: " 새 제목 " }), { saved: true, title: "새 제목" });
+  for (const bad of [{}, [], null, { ownerId: "x" }, { saved: "yes" }, { body: " " }])
+    assert.throws(() => validatePatch(bad), { code: "INVALID_INPUT" });
+});
+test("ideas API: 목록 쿼리와 커서", () => {
+  assert.deepEqual(parseListQuery(new URLSearchParams()), { saved: null, limit: 20, cursor: null });
+  const cursor = encodeCursor(record);
+  assert.deepEqual(parseListQuery(new URLSearchParams({ saved: "true", limit: "5", cursor })), {
+    saved: true,
+    limit: 5,
+    cursor: { createdAt: record.createdAt, id: uuid },
+  });
+  for (const q of [{ limit: "0" }, { limit: "101" }, { limit: "2.5" }, { saved: "1" }, { cursor: "x" }])
+    assert.throws(() => parseListQuery(new URLSearchParams(q)), { code: "INVALID_INPUT" });
+});
