@@ -5,4 +5,4 @@ resources:
   - app.yaml
 images:
   - name: 950177940921.dkr.ecr.ap-southeast-2.amazonaws.com/idea-support-server8
-    digest: sha256:2c259d06fd57daa3e72534b55ccbe07c4dcd0263d2b45eb044f2764739591d0f
+    digest: sha256:18d9b7a42b2ee90d8aae4994f25bc386eba498c0dac0b50b0c76779ea9a9e936
