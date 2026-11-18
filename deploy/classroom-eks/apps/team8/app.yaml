@@ -1,3 +1,26 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: idea-note-health-proxy
+rules:
+  - apiGroups: [""]
+    resources: [services/proxy]
+    resourceNames: ["idea-note:http"]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: idea-note-health-proxy
+subjects:
+  - kind: Group
+    name: classroom:team8
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: idea-note-health-proxy
+  apiGroup: rbac.authorization.k8s.io
+---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
