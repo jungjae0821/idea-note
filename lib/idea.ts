@@ -14,12 +14,12 @@ export type IdeaRecord = IdeaInput & {
   modelId: string;
 };
 export class IdeaError extends Error {
-  constructor(
-    public code: string,
-    message: string,
-    public status = 400,
-  ) {
+  code: string;
+  status: number;
+  constructor(code: string, message: string, status = 400) {
     super(message);
+    this.code = code;
+    this.status = status;
   }
 }
 export function validateInput(raw: unknown): IdeaInput {
