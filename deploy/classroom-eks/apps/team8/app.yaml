@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: idea-note-data
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: classroom-gp3
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: idea-note
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  minReadySeconds: 10
+  progressDeadlineSeconds: 600
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: idea-note-team8
+  template:
+    metadata:
+      labels:
+        app: idea-note-team8
+    spec:
+      automountServiceAccountToken: false
+      # The local D1 SQLite volume is RWO. Keep overlapping rollout Pods
+      # on the same node so they can both mount the persistent data volume.
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: idea-note-team8
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: app
+          image: 950177940921.dkr.ecr.ap-southeast-2.amazonaws.com/idea-support-server8:latest
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          startupProbe:
+            httpGet:
+              path: /common/health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /common/health
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /app/.wrangler/state
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: idea-note-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: idea-note
+spec:
+  type: ClusterIP
+  selector:
+    app: idea-note-team8
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
