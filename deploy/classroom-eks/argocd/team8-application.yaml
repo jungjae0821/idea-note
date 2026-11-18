@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: classroom-team8
+  namespace: argocd
+spec:
+  project: classroom-team8
+  source:
+    repoURL: https://github.com/jungjae0821/idea-note.git
+    targetRevision: main
+    path: deploy/classroom-eks/apps/team8
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: team8
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 1m

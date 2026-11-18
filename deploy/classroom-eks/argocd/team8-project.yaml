@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: classroom-team8
+  namespace: argocd
+spec:
+  description: Idea Note team8 classroom deployment
+  sourceRepos:
+    - https://github.com/jungjae0821/idea-note.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: team8
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: Service
+    - group: ""
+      kind: PersistentVolumeClaim
+    - group: apps
+      kind: Deployment
+    - group: rbac.authorization.k8s.io
+      kind: Role
+    - group: rbac.authorization.k8s.io
+      kind: RoleBinding
